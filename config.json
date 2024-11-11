@@ -1,0 +1,3 @@
+{
+    "s3_connection": "http://minio:minio123@localhost:9000/go-binary"
+}
