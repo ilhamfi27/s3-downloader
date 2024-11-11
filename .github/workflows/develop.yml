@@ -50,6 +50,6 @@ jobs:
       - name: Release binaries for Linux, macOS, and Windows
         uses: goreleaser/goreleaser-action@v4
         with:
-          args: release
+          args: release --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
