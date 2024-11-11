@@ -1,0 +1,55 @@
+name: Develop Pipeline
+
+on:
+  push:
+    branches:
+      - develop # Runs on develop branch
+    tags:
+      - '!*-dev*' # Exclude dev tags to prevent infinite loops on tag pushes
+
+jobs:
+  create-dev-tag-and-release:
+    # Job to create dev tag and release on develop branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
+      - name: Get latest version
+        id: get_version
+        run: |
+          git fetch --tags
+          latest_version=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          echo "Latest version: $latest_version"
+          # Extract the major, minor, patch, and dev count
+          if [[ "$latest_version" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)-dev\.([0-9]+)$ ]]; then
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
+            dev="${BASH_REMATCH[4]}"
+            new_tag="v${major}.${minor}.${patch}-dev.$((dev+1))"
+          else
+            new_tag="v1.0.0-dev.1"
+          fi
+          echo "New tag: $new_tag"
+          echo "tag=$new_tag" >> $GITHUB_ENV
+
+      - name: Create new dev tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+
+      - name: Release binaries for Linux, macOS, and Windows
+        uses: goreleaser/goreleaser-action@v4
+        with:
+          args: release --snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
